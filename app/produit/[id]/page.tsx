@@ -1,219 +1,75 @@
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import { getProduit } from '@/lib/supabase/catalogue'
-import { AjouterAuPanier } from './AjouterAuPanier'
+import { GalerieProduit } from '@/components/catalogue/galerie-produit'
 
-export async function generateMetadata({ params }: { params: { id: string } }) {
-  try {
-    const produit = await getProduit(params.id)
-    return {
-      title: produit ? `${produit.nom} — SenMarket` : 'Produit introuvable — SenMarket',
-    }
-  } catch {
-    return { title: 'SenMarket' }
-  }
+type PageProduitProps = {
+  params: Promise<{ id: string }>
 }
 
-export default async function ProduitPage({ params }: { params: { id: string } }) {
-  let produit: Awaited<ReturnType<typeof getProduit>> = null
-  let erreur: string | null = null
-
-  try {
-    produit = await getProduit(params.id)
-  } catch (e) {
-    erreur = e instanceof Error ? e.message : 'Erreur inconnue'
-  }
-
-  if (erreur) {
-    return (
-      <main style={styles.page}>
-        <div style={styles.erreur}>
-          Impossible de charger ce produit pour le moment.
-          <br />
-          <small>{erreur}</small>
-        </div>
-      </main>
-    )
-  }
+export default async function PageProduit({ params }: PageProduitProps) {
+  const { id } = await params
+  const produit = await getProduit(id)
 
   if (!produit) {
     notFound()
   }
 
-  const images =
-    produit.produit_images.length > 0
-      ? produit.produit_images
-      : produit.image_url
-        ? [{ id: 'principale', url: produit.image_url, ordre: 0 }]
-        : []
-  const epuise = produit.stock <= 0
+  const afficherPrixPromo = produit.prixPromo !== null && produit.prixPromo < produit.prix
+  const prixAffiche = afficherPrixPromo ? produit.prixPromo! : produit.prix
   
-  // Numéro WhatsApp nettoyé pour le lien wa.me
-  const whatsappClean = produit.boutique.whatsapp ? produit.boutique.whatsapp.replace(/[^0-9]/g, '') : null
+  // DEBUG - on affiche tout
+  const whatsappRaw = produit.boutique.whatsapp || 'VIDE'
+  const whatsappClean = produit.boutique.whatsapp?.replace(/[^0-9]/g, '') || ''
 
   return (
-    <main style={styles.page}>
-      <Link href="/catalogue" style={styles.retour}>
-        ← Retour au catalogue
-      </Link>
-
-      <div style={styles.carte}>
-        <div style={styles.galerie}>
-          {images.length > 0 ? (
-            images.map((img) => <img key={img.id} src={img.url} alt={produit.nom} style={styles.image} />)
-          ) : (
-            <div style={styles.imagePlaceholder}>{produit.emoji ?? '📦'}</div>
-          )}
-        </div>
-
-        <div style={styles.infos}>
-          <h1 style={styles.nom}>{produit.nom}</h1>
-          <p style={styles.boutiqueLigne}>
-            Vendu par <strong>{produit.boutique.nom}</strong>
-            {produit.boutique.verifie && ' ✅'}
-          </p>
-
-          {produit.prixPromo != null ? (
-            <div style={styles.prix}>
-              <span style={styles.prixBarre}>
-                {produit.prix} {produit.boutique.devise}
-              </span>{' '}
-              {produit.prixPromo} {produit.boutique.devise}
+    <div className="min-h-screen bg-gray-50">
+      <div className="mx-auto max-w-6xl px-4 py-8">
+        <Link href="/" className="text-sm text-gray-600 hover:underline">← Retour</Link>
+        
+        <div className="mt-6 grid gap-8 md:grid-cols-2">
+          <GalerieProduit images={produit.produit_images} imagePrincipale={produit.image_url} nomProduit={produit.nom} />
+          
+          <div className="rounded-2xl bg-white p-6 shadow">
+            <h1 className="text-2xl font-bold">{produit.nom}</h1>
+            <p className="mt-2 text-gray-600">{produit.boutique.nom}</p>
+            
+            <div className="mt-4">
+              {afficherPrixPromo && <p className="line-through text-gray-400">{produit.prix} {produit.boutique.devise}</p>}
+              <p className="text-3xl font-bold text-green-600">{prixAffiche} {produit.boutique.devise}</p>
             </div>
-          ) : (
-            <div style={styles.prix}>
-              {produit.prix} {produit.boutique.devise}
+
+            {/* DEBUG BOX */}
+            <div className="mt-4 p-3 bg-yellow-100 border border-yellow-300 rounded text-sm">
+              <p><b>DEBUG:</b></p>
+              <p>Boutique: {produit.boutique.nom}</p>
+              <p>WhatsApp brut: {whatsappRaw}</p>
+              <p>WhatsApp clean: {whatsappClean || 'VIDE'}</p>
+              <p>ID Boutique: {produit.boutique.id}</p>
             </div>
-          )}
 
-          {epuise ? (
-            <div style={styles.badgeEpuise}>Épuisé</div>
-          ) : (
-            <div style={styles.stock}>{produit.stock} en stock</div>
-          )}
+            {/* BOUTON WHATSAPP - TOUJOURS VISIBLE */}
+            <div className="mt-6">
+              {whatsappClean ? (
+                <a
+                  href={`https://wa.me/${whatsappClean}?text=Bonjour, je suis intéressé par ${encodeURIComponent(produit.nom)}`}
+                  target="_blank"
+                  className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#25D366] px-6 py-4 font-bold text-white hover:bg-[#20BD5A]"
+                >
+                  💬 Contacter sur WhatsApp: {produit.boutique.whatsapp}
+                </a>
+              ) : (
+                <div className="rounded-xl bg-red-100 p-4 text-red-700 text-center">
+                  ❌ Pas de numéro WhatsApp pour cette boutique.<br/>
+                  Va sur Supabase → boutiques → ajoute un numéro dans la colonne whatsapp
+                </div>
+              )}
+            </div>
 
-          <AjouterAuPanier
-            produitId={produit.id}
-            boutiqueId={produit.boutique.id}
-            boutiqueNom={produit.boutique.nom}
-            boutiqueWhatsapp={produit.boutique.whatsapp}
-            devise={produit.boutique.devise}
-            nom={produit.nom}
-            prix={produit.prix}
-            image={images[0]?.url ?? null}
-            emoji={produit.emoji}
-            stock={produit.stock}
-          />
-
-          {/* BOUTON WHATSAPP - AFFICHE LE NUMERO */}
-          {produit.boutique.whatsapp && whatsappClean && (
-            <a
-              href={`https://wa.me/${whatsappClean}?text=Bonjour ${produit.boutique.nom}, je suis intéressé par ${produit.nom} sur SenMarket`}
-              target="_blank"
-              rel="noopener noreferrer"
-              style={styles.whatsappBtn}
-            >
-              <span style={{fontSize: 20}}>💬</span> Contacter sur WhatsApp
-              <br />
-              <span style={{fontSize: 13, fontWeight: 600, opacity: 0.9}}>{produit.boutique.whatsapp}</span>
-            </a>
-          )}
-
-          {produit.description && <p style={styles.description}>{produit.description}</p>}
-
-          {produit.livraison && <p style={styles.livraison}>🚚 Livraison disponible</p>}
-
-          {produit.boutique.ville && (
-            <p style={styles.boutiqueMeta}>
-              {[produit.boutique.categorie, produit.boutique.ville].filter(Boolean).join(' · ')}
-              {' — '}
-              {'★'.repeat(Math.round(produit.boutique.note))} ({produit.boutique.note})
-            </p>
-          )}
+            {produit.description && <p className="mt-6 text-gray-700">{produit.description}</p>}
+          </div>
         </div>
       </div>
-    </main>
+    </div>
   )
-}
-
-const styles: { [key: string]: React.CSSProperties } = {
-  page: {
-    fontFamily: "'DM Sans', system-ui, sans-serif",
-    background: '#FAF7F2',
-    color: '#1A1A1A',
-    minHeight: '100vh',
-    padding: '24px clamp(16px, 5vw, 64px)',
-  },
-  retour: {
-    display: 'inline-block',
-    marginBottom: 20,
-    color: '#006B3C',
-    fontWeight: 600,
-    fontSize: 14,
-    textDecoration: 'none',
-  },
-  carte: {
-    background: '#FFFFFF',
-    border: '1px solid #E8E2D9',
-    borderRadius: 18,
-    padding: 20,
-    display: 'grid',
-    gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)',
-    gap: 24,
-    maxWidth: 900,
-    margin: '0 auto',
-  },
-  galerie: { display: 'flex', flexDirection: 'column', gap: 10 },
-  image: { width: '100%', borderRadius: 12, objectFit: 'cover', aspectRatio: '1 / 1' },
-  imagePlaceholder: {
-    width: '100%',
-    aspectRatio: '1 / 1',
-    borderRadius: 12,
-    background: '#F4EEE4',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    fontSize: 64,
-  },
-  infos: { display: 'flex', flexDirection: 'column', gap: 10 },
-  nom: { fontFamily: "'Playfair Display', serif", fontSize: 24, fontWeight: 900, margin: 0 },
-  boutiqueLigne: { color: '#7A7A7A', fontSize: 14, margin: 0 },
-  prix: { fontSize: 26, fontWeight: 900, color: '#006B3C' },
-  prixBarre: { textDecoration: 'line-through', color: '#7A7A7A', fontWeight: 400, fontSize: 15 },
-  badgeEpuise: {
-    display: 'inline-block',
-    alignSelf: 'flex-start',
-    fontSize: 12,
-    fontWeight: 700,
-    color: '#fff',
-    background: 'rgba(196,30,58,.85)',
-    borderRadius: 8,
-    padding: '4px 10px',
-  },
-  stock: { fontSize: 13, color: '#7A7A7A' },
-  whatsappBtn: {
-    display: 'block',
-    textAlign: 'center',
-    background: '#25D366',
-    color: '#fff',
-    fontWeight: 800,
-    fontSize: 16,
-    padding: '14px 20px',
-    borderRadius: 12,
-    textDecoration: 'none',
-    marginTop: 8,
-    lineHeight: 1.3,
-  },
-  description: { fontSize: 14, lineHeight: 1.6, color: '#3D3D3D' },
-  livraison: { fontSize: 13, color: '#3D3D3D' },
-  boutiqueMeta: { fontSize: 13, color: '#7A7A7A', marginTop: 'auto' },
-  erreur: {
-    background: 'rgba(196,30,58,.08)',
-    border: '1px solid rgba(196,30,58,.25)',
-    borderRadius: 12,
-    padding: 20,
-    color: '#C41E3A',
-    maxWidth: 480,
-    margin: '40px auto',
-  },
 }
