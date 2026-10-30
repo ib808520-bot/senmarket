@@ -47,6 +47,9 @@ export default async function ProduitPage({ params }: { params: { id: string } }
         ? [{ id: 'principale', url: produit.image_url, ordre: 0 }]
         : []
   const epuise = produit.stock <= 0
+  
+  // Numéro WhatsApp nettoyé pour le lien wa.me
+  const whatsappClean = produit.boutique.whatsapp ? produit.boutique.whatsapp.replace(/[^0-9]/g, '') : null
 
   return (
     <main style={styles.page}>
@@ -89,10 +92,6 @@ export default async function ProduitPage({ params }: { params: { id: string } }
             <div style={styles.stock}>{produit.stock} en stock</div>
           )}
 
-          {/* prix plein volontairement, pas prixPromo : creer_commande_complete
-              recalcule prix_unitaire depuis produits.prix cote serveur et ne
-              consulte jamais la table promotions -- afficher le prix reduit
-              ici promettrait une remise que la commande ne tiendra pas. */}
           <AjouterAuPanier
             produitId={produit.id}
             boutiqueId={produit.boutique.id}
@@ -105,6 +104,20 @@ export default async function ProduitPage({ params }: { params: { id: string } }
             emoji={produit.emoji}
             stock={produit.stock}
           />
+
+          {/* BOUTON WHATSAPP - AFFICHE LE NUMERO */}
+          {produit.boutique.whatsapp && whatsappClean && (
+            <a
+              href={`https://wa.me/${whatsappClean}?text=Bonjour ${produit.boutique.nom}, je suis intéressé par ${produit.nom} sur SenMarket`}
+              target="_blank"
+              rel="noopener noreferrer"
+              style={styles.whatsappBtn}
+            >
+              <span style={{fontSize: 20}}>💬</span> Contacter sur WhatsApp
+              <br />
+              <span style={{fontSize: 13, fontWeight: 600, opacity: 0.9}}>{produit.boutique.whatsapp}</span>
+            </a>
+          )}
 
           {produit.description && <p style={styles.description}>{produit.description}</p>}
 
@@ -178,6 +191,19 @@ const styles: { [key: string]: React.CSSProperties } = {
     padding: '4px 10px',
   },
   stock: { fontSize: 13, color: '#7A7A7A' },
+  whatsappBtn: {
+    display: 'block',
+    textAlign: 'center',
+    background: '#25D366',
+    color: '#fff',
+    fontWeight: 800,
+    fontSize: 16,
+    padding: '14px 20px',
+    borderRadius: 12,
+    textDecoration: 'none',
+    marginTop: 8,
+    lineHeight: 1.3,
+  },
   description: { fontSize: 14, lineHeight: 1.6, color: '#3D3D3D' },
   livraison: { fontSize: 13, color: '#3D3D3D' },
   boutiqueMeta: { fontSize: 13, color: '#7A7A7A', marginTop: 'auto' },
