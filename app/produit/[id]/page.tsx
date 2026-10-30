@@ -17,9 +17,6 @@ export default async function PageProduit({ params }: PageProduitProps) {
 
   const afficherPrixPromo = produit.prixPromo !== null && produit.prixPromo < produit.prix
   const prixAffiche = afficherPrixPromo ? produit.prixPromo! : produit.prix
-  
-  // DEBUG - on affiche tout
-  const whatsappRaw = produit.boutique.whatsapp || 'VIDE'
   const whatsappClean = produit.boutique.whatsapp?.replace(/[^0-9]/g, '') || ''
 
   return (
@@ -39,34 +36,23 @@ export default async function PageProduit({ params }: PageProduitProps) {
               <p className="text-3xl font-bold text-green-600">{prixAffiche} {produit.boutique.devise}</p>
             </div>
 
-            {/* DEBUG BOX */}
-            <div className="mt-4 p-3 bg-yellow-100 border border-yellow-300 rounded text-sm">
-              <p><b>DEBUG:</b></p>
-              <p>Boutique: {produit.boutique.nom}</p>
-              <p>WhatsApp brut: {whatsappRaw}</p>
-              <p>WhatsApp clean: {whatsappClean || 'VIDE'}</p>
-              <p>ID Boutique: {produit.boutique.id}</p>
-            </div>
-
-            {/* BOUTON WHATSAPP - TOUJOURS VISIBLE */}
             <div className="mt-6">
               {whatsappClean ? (
                 <a
-                  href={`https://wa.me/${whatsappClean}?text=Bonjour, je suis intéressé par ${encodeURIComponent(produit.nom)}`}
+                  href={`https://wa.me/${whatsappClean}?text=Bonjour, je suis intéressé par ${encodeURIComponent(produit.nom)} - ${prixAffiche} ${produit.boutique.devise}`}
                   target="_blank"
                   className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#25D366] px-6 py-4 font-bold text-white hover:bg-[#20BD5A]"
                 >
-                  💬 Contacter sur WhatsApp: {produit.boutique.whatsapp}
+                  💬 Contacter sur WhatsApp
                 </a>
               ) : (
-                <div className="rounded-xl bg-red-100 p-4 text-red-700 text-center">
-                  ❌ Pas de numéro WhatsApp pour cette boutique.<br/>
-                  Va sur Supabase → boutiques → ajoute un numéro dans la colonne whatsapp
+                <div className="rounded-xl bg-red-100 p-4 text-red-700 text-center text-sm">
+                  Numéro WhatsApp non configuré pour cette boutique
                 </div>
               )}
             </div>
 
-            {produit.description && <p className="mt-6 text-gray-700">{produit.description}</p>}
+            {produit.description && <p className="mt-6 text-gray-700 whitespace-pre-wrap">{produit.description}</p>}
           </div>
         </div>
       </div>
